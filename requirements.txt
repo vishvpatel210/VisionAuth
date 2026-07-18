@@ -8,12 +8,10 @@ numpy>=1.26.0
 # Testing
 pytest>=8.0.0
 
-# Future features (uncomment as each feature is built)
-# ----------------------------------------------------------
 # Feature 2 — Face Detection
-# insightface>=0.7.3         # RetinaFace
-# ultralytics>=8.2.0         # YOLOv11
-# onnxruntime-gpu>=1.18.0    # ONNX runtime (GPU); use onnxruntime for CPU
+insightface>=0.7.3           # RetinaFace backend
+onnxruntime>=1.18.0          # ONNX runtime (CPU); swap for onnxruntime-gpu if CUDA available
+ultralytics>=8.2.0           # YOLOv11 backend
 
 # Feature 3 — Face Tracking
 # lap>=0.4.0                 # Linear assignment for ByteTrack
