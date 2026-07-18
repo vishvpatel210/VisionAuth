@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧬 TemporalFace: AI-Driven Face Verification Framework for CAPTCHA-Free Human Authentication Using Temporal Multi-Modal Fusion
+# 🧬 VisionAuth: AI-Driven Face Verification Framework for CAPTCHA-Free Human Authentication Using Temporal Multi-Modal Fusion
 
 ### *Redefining Human Authentication Through Temporal Deep Learning and Multi-Modal Biometric Fusion*
 
@@ -10,34 +10,21 @@
 
 <br/>
 
-[![Stars](https://img.shields.io/github/stars/your-org/temporalface?style=for-the-badge&color=6C5CE7&logo=github)](https://github.com/your-org/temporalface/stargazers)
-[![Forks](https://img.shields.io/github/forks/your-org/temporalface?style=for-the-badge&color=00B894&logo=github)](https://github.com/your-org/temporalface/network/members)
-[![Issues](https://img.shields.io/github/issues/your-org/temporalface?style=for-the-badge&color=FDCB6E&logo=github)](https://github.com/your-org/temporalface/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/your-org/temporalface?style=for-the-badge&color=E17055&logo=github)](https://github.com/your-org/temporalface/pulls)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Release](https://img.shields.io/badge/Version-v2.1.0-informational?style=for-the-badge)](#)
+[![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](#)
+[![IEEE Ready](https://img.shields.io/badge/IEEE-Submission%20Ready-00548a?style=for-the-badge)](#)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](#)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](#)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.9-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)](#)
-[![CUDA](https://img.shields.io/badge/CUDA-12.2-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](#)
 [![Transformer](https://img.shields.io/badge/Architecture-Transformer-purple?style=for-the-badge)](#)
-[![Computer Vision](https://img.shields.io/badge/Domain-Computer%20Vision-blueviolet?style=for-the-badge)](#)
-[![Deep Learning](https://img.shields.io/badge/Domain-Deep%20Learning-critical?style=for-the-badge)](#)
-
-[![Build](https://img.shields.io/github/actions/workflow/status/your-org/temporalface/ci.yml?style=for-the-badge&label=Build&logo=githubactions)](#)
-[![IEEE Ready](https://img.shields.io/badge/IEEE-Submission%20Ready-00548a?style=for-the-badge)](#)
-[![Last Commit](https://img.shields.io/github/last-commit/your-org/temporalface?style=for-the-badge)](#)
-[![Downloads](https://img.shields.io/badge/Downloads-12.4K-brightgreen?style=for-the-badge)](#)
-[![Visitors](https://komarev.com/ghpvc/?username=temporalface&style=for-the-badge&color=blueviolet&label=VISITORS)](#)
-[![Contributors](https://img.shields.io/github/contributors/your-org/temporalface?style=for-the-badge)](#)
-[![Code Size](https://img.shields.io/github/languages/code-size/your-org/temporalface?style=for-the-badge)](#)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](#)
 
 <br/>
 
-<img src="https://user-images.githubusercontent.com/placeholder/hero-banner.svg" alt="TemporalFace Hero Banner" width="100%"/>
+<img src="https://img.shields.io/badge/VisionAuth-Passive%20%7C%20Multi--Modal%20%7C%20Real--Time-6C5CE7?style=for-the-badge&labelColor=1a1a2e" alt="VisionAuth Banner" width="70%"/>
+
+> 🖼️ *Replace this line with your own hero banner image once available — save it to `assets/hero-banner.png` and reference it as `<img src="assets/hero-banner.png" width="100%"/>`.*
 
 <br/>
 
@@ -80,7 +67,7 @@ Fully Passive, Frictionless Authentication
 </tr>
 </table>
 
-> **TemporalFace** eliminates the need for CAPTCHA-based human verification by fusing facial appearance, micro-temporal motion signatures, texture-frequency analysis, and 3D liveness cues into a single Transformer-based authentication pipeline — enabling secure, silent, real-time human verification for the modern web.
+> **VisionAuth** eliminates the need for CAPTCHA-based human verification by fusing facial appearance, micro-temporal motion signatures, texture-frequency analysis, and 3D liveness cues into a single Transformer-based authentication pipeline — enabling secure, silent, real-time human verification for the modern web.
 
 <br/>
 
@@ -141,7 +128,7 @@ Fully Passive, Frictionless Authentication
 
 ## 🧭 Project Overview
 
-**TemporalFace** is a research-grade, production-ready deep learning framework for **passive human authentication**, designed to replace traditional CAPTCHA challenges with a **silent, temporal, multi-modal face verification pipeline**. Rather than asking users to solve puzzles, click checkboxes, or transcribe distorted text, TemporalFace verifies human presence and identity by analyzing:
+**VisionAuth** is a research-grade, production-ready deep learning framework for **passive human authentication**, designed to replace traditional CAPTCHA challenges with a **silent, temporal, multi-modal face verification pipeline**. Rather than asking users to solve puzzles, click checkboxes, or transcribe distorted text, VisionAuth verifies human presence and identity by analyzing:
 
 - **Spatial facial appearance** (CNN embeddings)
 - **Micro-temporal motion dynamics** (optical flow across frame sequences)
@@ -170,7 +157,7 @@ The result is a single unified confidence score that simultaneously answers: *"I
 
 ## 💡 Why This Research Matters
 
-Modern authentication is stuck between two failing extremes: **CAPTCHA puzzles** that frustrate legitimate users while remaining solvable by advanced bots (GPT-vision-based solvers, OCR farms), and **biometric systems** vulnerable to static photo or video-replay spoofing. TemporalFace addresses both simultaneously — offering **stronger security guarantees with zero user friction**, aligning with modern accessibility, UX, and Zero-Trust security mandates.
+Modern authentication is stuck between two failing extremes: **CAPTCHA puzzles** that frustrate legitimate users while remaining solvable by advanced bots (GPT-vision-based solvers, OCR farms), and **biometric systems** vulnerable to static photo or video-replay spoofing. VisionAuth addresses both simultaneously — offering **stronger security guarantees with zero user friction**, aligning with modern accessibility, UX, and Zero-Trust security mandates.
 
 <br/>
 
@@ -206,7 +193,7 @@ The convergence of transformer architectures, efficient optical-flow estimation,
 
 ## 🚀 Proposed Solution
 
-TemporalFace replaces the CAPTCHA challenge-response model with a **continuous passive verification layer** that runs during natural user interaction (e.g., a login camera glance), fusing four independent modalities through a shared Transformer encoder to produce a single robust authenticity + identity score.
+VisionAuth replaces the CAPTCHA challenge-response model with a **continuous passive verification layer** that runs during natural user interaction (e.g., a login camera glance), fusing four independent modalities through a shared Transformer encoder to produce a single robust authenticity + identity score.
 
 ### Key Innovations & Novel Contributions
 
@@ -310,7 +297,7 @@ graph TB
 sequenceDiagram
     participant U as User Device
     participant API as Verification API
-    participant M as TemporalFace Model
+    participant M as VisionAuth Model
     participant DB as Enrollment Store
 
     U->>API: Stream N-frame sequence
@@ -402,7 +389,7 @@ sequenceDiagram
     actor User
     participant Client as Client App
     participant Gateway as Auth Gateway
-    participant Engine as TemporalFace Engine
+    participant Engine as VisionAuth Engine
 
     User->>Client: Opens app / initiates login
     Client->>Client: Silently capture N-frame sequence
@@ -471,7 +458,7 @@ flowchart TB
 ## 📁 Folder Structure
 
 ```
-temporalface/
+visionauth/
 ├── 📂 assets/                      # Diagrams, banners, demo GIFs
 ├── 📂 configs/                     # YAML configs for training/inference
 │   ├── train_config.yaml
@@ -568,12 +555,12 @@ temporalface/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/temporalface.git
-cd temporalface
+git clone https://github.com/your-org/visionauth.git
+cd visionauth
 
 # Create environment
-conda create -n temporalface python=3.11 -y
-conda activate temporalface
+conda create -n visionauth python=3.11 -y
+conda activate visionauth
 
 # Install dependencies
 pip install -r requirements.txt
@@ -798,7 +785,7 @@ flowchart LR
 | Traditional CAPTCHA | N/A | 8–15s | ❌ | ❌ |
 | Static Face Match | 91.2% | 35ms | ❌ | ✅ |
 | Face + Blink Liveness | 95.6% | 40ms | Partial | ✅ |
-| **TemporalFace (Ours)** | **99.4%** | **18ms** | ✅ | ✅ |
+| **VisionAuth (Ours)** | **99.4%** | **18ms** | ✅ | ✅ |
 
 <br/>
 
@@ -836,7 +823,7 @@ flowchart LR
 
 ```mermaid
 timeline
-    title TemporalFace Research Roadmap
+    title VisionAuth Research Roadmap
     2026 Q3 : Multi-camera fusion (depth + RGB) support
     2026 Q4 : On-device federated fine-tuning
     2027 Q1 : Cross-ethnicity fairness audit release
@@ -859,17 +846,17 @@ timeline
 <table>
 <tr>
 <td align="center">
-<img src="https://github.com/identicons/contributor1.png" width="80" height="80" style="border-radius:50%"/><br/>
+<img src="https://ui-avatars.com/api/?name=Lead+Engineer&background=6C5CE7&color=fff&size=80" width="80" height="80" style="border-radius:50%"/><br/>
 <b>Lead Research Engineer</b><br/>
 <sub>Architecture · Transformer Fusion</sub>
 </td>
 <td align="center">
-<img src="https://github.com/identicons/contributor2.png" width="80" height="80" style="border-radius:50%"/><br/>
+<img src="https://ui-avatars.com/api/?name=CV+Engineer&background=00B894&color=fff&size=80" width="80" height="80" style="border-radius:50%"/><br/>
 <b>Computer Vision Engineer</b><br/>
 <sub>Preprocessing · Alignment</sub>
 </td>
 <td align="center">
-<img src="https://github.com/identicons/contributor3.png" width="80" height="80" style="border-radius:50%"/><br/>
+<img src="https://ui-avatars.com/api/?name=MLOps+Engineer&background=E17055&color=fff&size=80" width="80" height="80" style="border-radius:50%"/><br/>
 <b>MLOps Engineer</b><br/>
 <sub>Deployment · Infra</sub>
 </td>
@@ -890,7 +877,7 @@ If you use this work in your research, please cite:
 ### BibTeX
 
 ```bibtex
-@article{temporalface2026,
+@article{visionauth2026,
   title   = {AI-Driven Face Verification Framework for CAPTCHA-Free Human Authentication Using Temporal Multi-Modal Fusion},
   author  = {Your Name and Co-Author Name},
   journal = {IEEE Transactions on Biometrics, Behavior, and Identity Science},
@@ -940,6 +927,6 @@ Special thanks to the open-source computer vision and biometrics research commun
 
 **Built with 🧠 rigor and 🎨 craftsmanship for the future of human authentication.**
 
-<sub>© 2026 TemporalFace Research Group. All rights reserved.</sub>
+<sub>© 2026 VisionAuth Research Group. All rights reserved.</sub>
 
 </div>
