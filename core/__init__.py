@@ -26,3 +26,6 @@ from .liveness           import LivenessHead, LivenessHeuristics, LivenessEvalua
 
 # Feature 8
 from .verifier           import ArcFaceVerifier
+
+# Feature 9
+from .auth_engine        import AuthDecisionEngine, AuthResult
