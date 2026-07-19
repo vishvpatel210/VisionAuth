@@ -52,6 +52,16 @@ class DatabaseManager:
             );
         """)
 
+        # 3. Portal credentials table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS portal_credentials (
+                email TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         conn.commit()
         conn.close()
 
@@ -148,9 +158,33 @@ class DatabaseManager:
         return deleted_count > 0
 
     def clear_database(self) -> None:
-        """Wipe all registered users."""
+        """Wipe all registered users and portal credentials."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM users;")
+        try:
+            cursor.execute("DELETE FROM portal_credentials;")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
         conn.close()
+
+    def register_portal_user(self, email: str, username: str, password_hash: str) -> None:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO portal_credentials (email, username, password_hash) VALUES (?, ?, ?);",
+            (email, username, password_hash)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_portal_user(self, email: str) -> Optional[dict]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT email, username, password_hash FROM portal_credentials WHERE email = ?;", (email,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return {"email": row[0], "username": row[1], "password_hash": row[2]}
+        return None
