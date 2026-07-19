@@ -24,7 +24,8 @@ torchvision>=0.18.0
 # faiss-cpu>=1.8.0           # Vector similarity search
 
 # API
-# fastapi>=0.111.0
-# uvicorn[standard]>=0.30.0
-# pydantic>=2.7.0
-# python-jose[cryptography]>=3.3.0   # JWT tokens
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+python-jose[cryptography]>=3.3.0   # JWT tokens
+python-multipart>=0.0.9
