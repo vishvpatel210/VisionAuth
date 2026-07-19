@@ -27,7 +27,19 @@ class GlobalModels:
     def __init__(self, db_path: str):
         logger.info("Initializing global AI models...")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
+        self.demo_mode = str(os.environ.get("RENDER_DEMO_MODE", "")).lower().strip() == "true"
+
+        from core.verification.verifier import ArcFaceVerifier
+        from core.verification.auth_engine import AuthDecisionEngine
+
+        self.verifier = ArcFaceVerifier(db_path=db_path)
+        self.verifier._load()
+        self.engine = AuthDecisionEngine(db_path=db_path, liveness_threshold=0.44)
+
+        if self.demo_mode:
+            logger.warning("⚠️ RENDER_DEMO_MODE ON: Skipping heavy PyTorch models in GlobalModels.")
+            return
+
         from core.detection.backends.retinaface_backend import RetinaFaceDetector
         from core.alignment.aligner import LandmarkFreeAligner
         from core.features.feature_rgb import RGBFeatureExtractor
@@ -35,8 +47,6 @@ class GlobalModels:
         from core.features.feature_texture import TextureEncoder, TextureFeatureExtractor
         from core.features.fusion import TemporalMultiModalFusionTransformer
         from core.liveness.liveness import LivenessHead, LivenessEvaluator
-        from core.verification.verifier import ArcFaceVerifier
-        from core.verification.auth_engine import AuthDecisionEngine
 
         self.detector = RetinaFaceDetector(det_size=(320, 320), det_thresh=0.5)
         self.detector.warmup()
@@ -51,9 +61,6 @@ class GlobalModels:
         self.live_head = LivenessHead().to(self.device).eval()
         self.live_eval = LivenessEvaluator()
 
-        self.verifier = ArcFaceVerifier(db_path=db_path)
-        self.verifier._load()
-        self.engine = AuthDecisionEngine(db_path=db_path, liveness_threshold=0.44)
         logger.info("Global models loaded successfully on %s", self.device)
 
 def get_global_models(db_path: str = "embeddings.db") -> GlobalModels:
@@ -94,6 +101,32 @@ class PipelineSession:
         from core.capture.tracker import select_primary_face
         from core.liveness.liveness import LivenessHeuristics
         
+        # ── DEMO MODE BYPASS ────────────────────────────────────
+        if m.demo_mode:
+            import cv2
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = m.verifier._mock_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(100, 100))
+            self.face_detected = len(faces) > 0
+            
+            if self.face_detected:
+                self.buffer_fill = min(10, self.buffer_fill + 1)
+                if self.buffer_fill >= 5:
+                    self.last_result = {
+                        "granted": True,
+                        "username": "Demo_User_Match",
+                        "liveness_score": 0.999,
+                        "identity_score": 0.999,
+                        "combined_score": 0.999,
+                        "decision": "PASS",
+                        "reason": "Passed Temporal Liveness (Demo)",
+                        "audit_id": "demo_audit_001"
+                    }
+            else:
+                self.buffer_fill = max(0, self.buffer_fill - 1)
+                self.last_result = None
+                
+            return self._build_state()
+
         # ── Detect & Track ──────────────────────────────────────
         raw_faces = m.detector.detect(frame, frame_index=self.frame_index, timestamp=time.time())
         tracked_faces = self.tracker.update(raw_faces)
