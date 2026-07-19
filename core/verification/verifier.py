@@ -45,7 +45,7 @@ class ArcFaceVerifier:
         if self._app is not None:
             return
 
-        self.demo_mode = os.environ.get("RENDER_DEMO_MODE") == "true"
+        self.demo_mode = str(os.environ.get("RENDER_DEMO_MODE", "")).lower().strip() == "true"
         
         if self.demo_mode:
             logger.warning("⚠️ RENDER_DEMO_MODE is ON! Using lightweight Haar Cascades to save memory.")
