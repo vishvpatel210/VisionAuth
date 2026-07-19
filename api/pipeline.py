@@ -7,6 +7,7 @@ Models are loaded globally to save memory. State is isolated per session.
 
 from __future__ import annotations
 
+import os
 import logging
 import threading
 import time
