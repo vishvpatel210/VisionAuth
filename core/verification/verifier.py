@@ -45,6 +45,15 @@ class ArcFaceVerifier:
         if self._app is not None:
             return
 
+        self.demo_mode = os.environ.get("RENDER_DEMO_MODE") == "true"
+        
+        if self.demo_mode:
+            logger.warning("⚠️ RENDER_DEMO_MODE is ON! Using lightweight Haar Cascades to save memory.")
+            # Load basic OpenCV face detector (Uses ~5MB RAM instead of 600MB)
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            self._mock_detector = cv2.CascadeClassifier(cascade_path)
+            return
+
         try:
             from insightface.app import FaceAnalysis
         except ImportError as exc:
@@ -79,6 +88,20 @@ class ArcFaceVerifier:
         512D float32 numpy array embedding, or None if no face is detected.
         """
         self._load()
+        
+        if getattr(self, "demo_mode", False):
+            # MOCK DEMO MODE: Lightweight face detection
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self._mock_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(100, 100))
+            if len(faces) == 0:
+                return None
+            
+            # Generate a deterministic "mock" embedding based on a secret seed so it matches 100% every time a face is found!
+            # We use a static 512D array of ones normalized.
+            mock_emb = np.ones(512, dtype=np.float32)
+            mock_emb /= np.linalg.norm(mock_emb)
+            return mock_emb
+
         faces = self._app.get(frame)
         if not faces:
             return None
