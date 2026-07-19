@@ -57,10 +57,14 @@ class ArcFaceVerifier:
         # Allowed modules must include 'recognition' to activate ArcFace embedding extraction
         self._app = FaceAnalysis(
             name=self.model_pack_name,
-            allowed_modules=["detection", "recognition"]
+            allowed_modules=["detection", "recognition"],
+            providers=["CPUExecutionProvider"]
         )
-        self._app.prepare(ctx_id=self.ctx_id, det_size=(640, 640))
-        logger.info("ArcFace model loaded successfully.")
+        # ── MEMORY OPTIMIZATION ──
+        # Render Free Tier only has 512MB RAM. det_size=(640, 640) spikes memory and causes OOM SIGKILL (502 error).
+        # We lower it to (320, 320) to keep memory footprint low while preserving enough accuracy for a centered face.
+        self._app.prepare(ctx_id=self.ctx_id, det_size=(320, 320))
+        logger.info("ArcFace model loaded successfully with memory optimizations.")
 
     def extract_embedding(self, frame: np.ndarray) -> Optional[np.ndarray]:
         """
