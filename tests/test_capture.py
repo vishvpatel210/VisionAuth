@@ -66,7 +66,7 @@ def mock_capture(monkeypatch):
         def release(self):
             pass
 
-    monkeypatch.setattr("core.capture.cv2.VideoCapture", _FakeCap)
+    monkeypatch.setattr("core.capture.capture.cv2.VideoCapture", _FakeCap)
 
     cfg = CaptureConfig(source_id=0, width=640, height=480, target_fps=60.0, buffer_size=32)
     cap = VideoCapture(cfg)
@@ -215,7 +215,7 @@ class TestFactory:
                 return True, np.zeros((480, 640, 3), dtype=np.uint8)
             def release(self): pass
 
-        monkeypatch.setattr("core.capture.cv2.VideoCapture", _FakeCap)
+        monkeypatch.setattr("core.capture.capture.cv2.VideoCapture", _FakeCap)
         cap = create_capture(source_id=0, width=320, height=240)
         assert isinstance(cap, VideoCapture)
         assert cap._cfg.width  == 320

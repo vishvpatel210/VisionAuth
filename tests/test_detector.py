@@ -16,7 +16,7 @@ import time
 import numpy as np
 import pytest
 
-from core.detector      import DetectedFace, FaceDetector
+from core.detection.detector      import DetectedFace, FaceDetector
 from core.features.temporal_head import TemporalDetectionHead, _iou
 from core.detection.detection_pipeline import DetectionPipeline, draw_detections
 from core.capture.capture import FramePacket

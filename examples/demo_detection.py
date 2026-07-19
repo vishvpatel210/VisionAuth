@@ -30,7 +30,7 @@ import cv2
 
 from utils.logger          import setup_logging
 from core.capture          import create_capture
-from core.temporal_head    import TemporalDetectionHead
+from core.features.temporal_head    import TemporalDetectionHead
 from core.detection.detection_pipeline import DetectionPipeline, draw_detections
 
 

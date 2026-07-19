@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 from core.capture      import FramePacket
-from core.detector     import DetectedFace, FaceDetector
+from core.detection.detector import DetectedFace, FaceDetector
 from core.features.temporal_head import TemporalDetectionHead
 
 logger = logging.getLogger(__name__)
