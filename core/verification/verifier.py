@@ -5,6 +5,7 @@ Initializes ArcFace model using InsightFace. Performs similarity matching
 using cosine similarity against enrolled templates in the SQLite database.
 """
 
+import os
 import logging
 from typing import Optional, Tuple, List
 
