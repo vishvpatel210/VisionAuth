@@ -29,3 +29,5 @@ uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
 python-jose[cryptography]>=3.3.0   # JWT tokens
 python-multipart>=0.0.9
+google-auth>=2.20.0
+requests>=2.31.0

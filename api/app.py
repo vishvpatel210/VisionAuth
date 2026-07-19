@@ -22,7 +22,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -38,7 +38,7 @@ from db.db_manager import DatabaseManager
 from db.audit_log  import AuditLogger
 from core.verification.verifier    import ArcFaceVerifier
 from core.verification.auth_engine import AuthDecisionEngine
-from api.pipeline import state as pipeline_state, start_pipeline, stop_pipeline, generate_mjpeg
+from api.pipeline import get_global_models, PipelineSession, stop_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +98,8 @@ def _decode_image(data: bytes) -> np.ndarray:
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    logger.info("Starting pipeline worker …")
-    start_pipeline(db_path=DB_PATH)
+    logger.info("Initializing global models...")
+    get_global_models(db_path=DB_PATH)
 
 
 @app.on_event("shutdown")
@@ -115,27 +115,42 @@ async def root():
     return HTMLResponse(content=html)
 
 
-# ── Video feed ────────────────────────────────────────────────────────────────
-@app.get("/video_feed")
-async def video_feed():
-    return StreamingResponse(
-        generate_mjpeg(),
-        media_type="multipart/x-mixed-replace; boundary=frame",
-    )
+# ── WebSocket Stream ──────────────────────────────────────────────────────────
+import base64
 
+@app.websocket("/ws/stream")
+async def websocket_stream(websocket: WebSocket):
+    await websocket.accept()
+    logger.info("WebSocket connected.")
+    models = get_global_models(db_path=DB_PATH)
+    session = PipelineSession(models)
+    
+    try:
+        while True:
+            # Receive frame as base64 or bytes from client
+            text_data = await websocket.receive_text()
+            # typically client sends "data:image/jpeg;base64,..."
+            if "," in text_data:
+                header, encoded = text_data.split(",", 1)
+            else:
+                encoded = text_data
+            
+            data = base64.b64decode(encoded)
+            frame = _decode_image(data)
+            
+            # Process frame and return state JSON
+            state_dict = session.process_frame(frame)
+            await websocket.send_json(state_dict)
+            
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected.")
+    except Exception as e:
+        logger.error("WebSocket error: %s", e)
+        try:
+            await websocket.close()
+        except:
+            pass
 
-# ── Pipeline Status ───────────────────────────────────────────────────────────
-@app.get("/api/status")
-async def api_status():
-    with pipeline_state.lock:
-        return {
-            "running":      pipeline_state.running,
-            "fps":          round(pipeline_state.fps, 1),
-            "face_detected": pipeline_state.face_detected,
-            "buffer_fill":  pipeline_state.buffer_fill,
-            "seq_len":      pipeline_state.seq_len,
-            "last_result":  pipeline_state.last_result,
-        }
 
 
 # ── Admin: Enroll Face ────────────────────────────────────────────────────────
@@ -199,6 +214,9 @@ async def api_clear_users():
     return {"message": "All enrolled users cleared."}
 
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Secure Portal Endpoints (FaceShield AI Login / Signup flow)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -208,7 +226,7 @@ async def api_clear_users():
 async def portal_signup(
     username: str      = Form(...),
     email:    str      = Form(...),
-    password: str      = Form(...),
+    password: str      = Form(""),
     image:    UploadFile = File(...),
 ):
     email = email.lower().strip()
@@ -226,7 +244,8 @@ async def portal_signup(
         raise HTTPException(status_code=400, detail=f"Face enrollment failed: {msg}")
 
     # Store credentials persistently in SQLite
-    get_db().register_portal_user(email, username, _hash_pw(password))
+    pw_hash = _hash_pw(password) if password else "*google_auth*"
+    get_db().register_portal_user(email, username, pw_hash)
 
     logger.info("Portal signup: user=%s email=%s", username, email)
     return {"message": f"Account created successfully! Welcome, {username}."}
@@ -247,44 +266,32 @@ async def portal_login_password(
     return {"email": email, "username": user["username"], "message": "Credentials verified."}
 
 
-# ── Portal: Step 2A — Verify face from live pipeline stream ───────────────────
-@app.post("/api/portal/login/face-stream")
-async def portal_login_face_stream(email: str = Form(...)):
-    email = email.lower().strip()
-    user  = get_db().get_portal_user(email)
+# ── Portal: Step 1 — Verify Google Token ──────────────────────────────────────
+@app.post("/api/portal/login/google")
+async def portal_login_google(
+    credential: str = Form(...),
+):
+    google_client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    if not google_client_id:
+        raise HTTPException(status_code=500, detail="Google Client ID not configured on server.")
+
+    try:
+        # Verify the token
+        idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), google_client_id)
+        email = idinfo.get("email", "").lower().strip()
+    except Exception as e:
+        logger.error("Google Auth failed: %s", e)
+        raise HTTPException(status_code=401, detail="Invalid Google token.")
+
+    user = get_db().get_portal_user(email)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
+        # User not found -> must sign up to enroll face
+        raise HTTPException(status_code=404, detail="Account not found. Please Sign Up to enroll your face first.")
 
-    username = user["username"]
+    return {"email": email, "username": user["username"], "message": "Google Login verified. Proceed to face check."}
 
-    with pipeline_state.lock:
-        result = pipeline_state.last_result
 
-    if result is None:
-        raise HTTPException(status_code=503, detail="Pipeline not ready yet.")
-
-    # Use identity score — check against this specific user
-    verifier = get_verifier()
-
-    with pipeline_state.lock:
-        frame = pipeline_state.latest_frame
-
-    if frame is None:
-        raise HTTPException(status_code=503, detail="No frame available.")
-
-    matched_user, similarity = verifier.identify_user(frame)
-
-    if matched_user == username and similarity >= 0.45:
-        # Also check liveness from pipeline
-        liveness_ok = result.get("liveness_score", 0) >= 0.50
-        if liveness_ok:
-            logger.info("Portal face-stream login granted for %s", username)
-            return {"success": True, "username": username, "similarity": round(float(similarity), 4)}
-
-    raise HTTPException(
-        status_code=401,
-        detail=f"Face verification failed (similarity={similarity:.3f}, liveness={result.get('liveness_score', 0):.3f})"
-    )
+# /api/portal/login/face-stream removed because WebSocket now handles streaming natively
 
 
 # ── Portal: Step 2B — Verify face from uploaded snapshot ──────────────────────

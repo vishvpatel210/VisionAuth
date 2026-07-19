@@ -91,6 +91,83 @@ document.addEventListener("DOMContentLoaded", () => {
   let verifyPolling    = null;
 
   // ══════════════════════════════════════════════════════════════════
+  // GOOGLE AUTHENTICATION
+  // ══════════════════════════════════════════════════════════════════
+  const GOOGLE_CLIENT_ID = "693082066635-lvuqu0vm8fe53dg9i21qao9uae3q480k.apps.googleusercontent.com";
+
+  function parseJwt(token) {
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function handleGoogleCallback(response) {
+    const isLoginView = !viewLogin.classList.contains("hidden");
+
+    if (isLoginView) {
+      // Process Google Login
+      clearMsg(loginMsg);
+      const fd = new FormData();
+      fd.append("credential", response.credential);
+
+      setLoading(loginBtn, true);
+      fetch("/api/portal/login/google", { method: "POST", body: fd })
+        .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
+        .then(({ status, ok, data }) => {
+          if (!ok) throw new Error(data.detail || "Google Login failed.");
+          loggedInEmail    = data.email;
+          loggedInUsername = data.username;
+          showMsg(loginMsg, `✅ ${data.message}`, "success");
+          setTimeout(() => showVerify(), 1200);
+        })
+        .catch(err => {
+          showMsg(loginMsg, `❌ ${err.message}`, "error");
+        })
+        .finally(() => {
+          setLoading(loginBtn, false);
+        });
+    } else {
+      // Process Google Signup
+      const payload = parseJwt(response.credential);
+      if (payload) {
+        signupName.value = payload.name || "";
+        signupEmail.value = payload.email || "";
+        // Hide password fields since they aren't needed for Google signup
+        signupPw.parentElement.style.display = 'none';
+        signupConfirm.parentElement.style.display = 'none';
+        signupPw.required = false;
+        signupConfirm.required = false;
+        
+        showMsg(signupMsg, "✅ Google info loaded. Please upload a Face Enrollment Photo and submit.", "info");
+      }
+    }
+  }
+
+  // Initialize once GIS library is ready
+  window.onload = () => {
+    if (window.google && google.accounts) {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCallback,
+      });
+
+      const btnOptions = { theme: "outline", size: "large", width: 350 };
+      
+      const loginContainer = document.getElementById("google-login-btn");
+      if (loginContainer) {
+        google.accounts.id.renderButton(loginContainer, btnOptions);
+      }
+
+      const signupContainer = document.getElementById("google-signup-btn");
+      if (signupContainer) {
+        google.accounts.id.renderButton(signupContainer, { ...btnOptions, text: "signup_with" });
+      }
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════════
   // TAB SWITCHING
   // ══════════════════════════════════════════════════════════════════
   function showTab(tab) {
@@ -100,14 +177,14 @@ document.addEventListener("DOMContentLoaded", () => {
       tabPortal.classList.remove("hidden");
       tabAdmin.classList.add("hidden");
       // Release admin feed when not on admin tab
-      adminFeed.src = "";
+      stopCameraAndWS();
     } else {
       btnTabAdmin.classList.add("active");
       btnTabPortal.classList.remove("active");
       tabAdmin.classList.remove("hidden");
       tabPortal.classList.add("hidden");
       // Activate admin camera feed
-      adminFeed.src = "/video_feed";
+      startCameraAndWS(adminFeed);
       fetchAuditLog();
     }
   }
@@ -136,14 +213,12 @@ document.addEventListener("DOMContentLoaded", () => {
       heroLogin.classList.add("hidden");
     }
   }
-
   function showVerify() {
     portalGate.classList.add("hidden");
     portalVerify.classList.remove("hidden");
     portalSuccess.classList.add("hidden");
     // Start the camera stream for verification
-    verifyFeed.src = "/video_feed";
-    startVerifyPolling();
+    startCameraAndWS(verifyFeed);
   }
 
   function showSuccess(username, lr) {
@@ -166,8 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
     launchConfetti();
 
     // Release verify camera stream
-    verifyFeed.src = "";
-    stopVerifyPolling();
+    stopCameraAndWS();
   }
 
   // Lightweight canvas confetti
@@ -335,83 +409,145 @@ document.addEventListener("DOMContentLoaded", () => {
     if (color) ringPath.style.stroke = color;
   }
 
-  // Auto-verify: poll pipeline status and auto-redirect on grant
+  // ══════════════════════════════════════════════════════════════════
+  // WEBSOCKET & CAMERA STREAMING
+  // ══════════════════════════════════════════════════════════════════
+  let stream = null;
+  let ws = null;
+  let wsInterval = null;
   let _autoGranted = false;
-  function startVerifyPolling() {
-    _autoGranted = false;
-    setRing(0, "📡 Searching for your face…", "#00e5ff");
-    showMsg(verifyMsg, "Look at the camera — face detection is running automatically.", "info");
 
-    verifyPolling = setInterval(async () => {
-      if (_autoGranted) return;   // already redirecting
-      try {
-        const res  = await fetch("/api/status");
-        const data = await res.json();
+  async function startCameraAndWS(videoElem) {
+    if (stream) return; // already running
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      videoElem.srcObject = stream;
 
-        const bufPct = data.seq_len > 0
-          ? Math.round((data.buffer_fill / data.seq_len) * 100)
-          : 0;
+      const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${wsProto}//${location.host}/ws/stream`);
 
-        const lr = data.last_result;   // last pipeline decision
-
-        if (!data.face_detected) {
-          setRing(Math.min(bufPct, 20), "📡 Searching for your face…", "#00e5ff");
-          clearMsg(verifyMsg);
-          showMsg(verifyMsg, "Look directly at the camera.", "info");
-
-        } else if (lr && lr.granted && lr.username && lr.username.toLowerCase() === loggedInUsername.toLowerCase()) {
-          // ─── ACCESS GRANTED ────────────────────────────────────────
-          _autoGranted = true;
-          stopVerifyPolling();
-
-          setRing(100, "✅ Identity Confirmed!", "#00e676");
-          clearMsg(verifyMsg);
-          showMsg(verifyMsg, "✅ Face matched! Redirecting…", "success");
-
-          // brief pause so user sees 100% ring, then redirect
-          setTimeout(() => showSuccess(loggedInUsername, lr), 1400);
-
-        } else if (data.face_detected && !(lr && lr.granted)) {
-          // Face seen but decision pending or denied — animate ring fill
-          const displayPct = Math.max(bufPct, 30);
-          if (lr && lr.liveness_score !== undefined && lr.liveness_score < 0.4) {
-            setRing(displayPct, "⚠️ Liveness check…", "#ffab40");
-            showMsg(verifyMsg, "Hold still and look at the camera.", "warn");
-          } else {
-            setRing(displayPct, "🔍 Checking identity…", "#7c4dff");
-            clearMsg(verifyMsg);
-            showMsg(verifyMsg, "Face detected — matching identity…", "info");
-          }
-        } else {
-          setRing(bufPct, "🔍 Analysing…", "#00e5ff");
+      ws.onopen = () => {
+        statusDot.className = "status-dot on";
+        statusText.textContent = "Pipeline Active";
+        _autoGranted = false;
+        
+        if (!tabPortal.classList.contains("hidden") && !portalVerify.classList.contains("hidden")) {
+          setRing(0, "📡 Searching for your face…", "#00e5ff");
+          showMsg(verifyMsg, "Look at the camera — face detection is running automatically.", "info");
         }
-      } catch (_) {}
-    }, 600);
+
+        wsInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN && stream && !videoElem.paused) {
+            const canvas = document.getElementById("ws-canvas");
+            if (canvas) {
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+              ws.send(dataUrl);
+            }
+          }
+        }, 100); // 10 FPS
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleStreamData(data);
+      };
+
+      ws.onclose = () => {
+        statusDot.className = "status-dot off";
+        statusText.textContent = "Pipeline Offline";
+      };
+    } catch (err) {
+      console.error(err);
+      alert("Could not access camera. Please allow camera permissions.");
+    }
   }
 
-  function stopVerifyPolling() {
-    if (verifyPolling) { clearInterval(verifyPolling); verifyPolling = null; }
+  function stopCameraAndWS() {
+    if (wsInterval) { clearInterval(wsInterval); wsInterval = null; }
+    if (ws) { ws.close(); ws = null; }
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    verifyFeed.srcObject = null;
+    adminFeed.srcObject = null;
   }
 
-  // Live-stream verify button
+  function handleStreamData(data) {
+    // 1. Update Admin HUD if visible
+    if (!tabAdmin.classList.contains("hidden")) {
+      if (data.last_result) {
+        const r = data.last_result;
+        feedHud.textContent = r.granted
+          ? `✅ GRANTED — ${r.username}`
+          : `❌ DENIED — ${r.reason || ""}`;
+        feedHud.style.color = r.granted ? "var(--green)" : "var(--red)";
+
+        dIcon.textContent  = r.granted ? "✅" : "❌";
+        dLabel.textContent = r.decision;
+        dLabel.style.color = r.granted ? "var(--green)" : "var(--red)";
+        dUser.textContent  = r.username;
+
+        const lv = Math.min(100, r.liveness_score * 100);
+        const iv = Math.min(100, r.identity_score * 100);
+        const cv = Math.min(100, r.combined_score * 100);
+        barLive.style.width = `${lv}%`;
+        barIden.style.width = `${iv}%`;
+        barComb.style.width = `${cv}%`;
+        valLive.textContent = `${lv.toFixed(0)}%`;
+        valIden.textContent = `${iv.toFixed(0)}%`;
+        valComb.textContent = `${cv.toFixed(0)}%`;
+        reasonText.textContent = r.reason || "";
+      } else {
+        feedHud.textContent = data.face_detected ? "Scanning…" : "NO TARGET DETECTED";
+        feedHud.style.color = "";
+      }
+    }
+
+    // 2. Update Verify Ring if visible
+    if (!tabPortal.classList.contains("hidden") && !portalVerify.classList.contains("hidden")) {
+      if (_autoGranted) return; // already redirecting
+
+      const bufPct = data.seq_len > 0
+        ? Math.round((data.buffer_fill / data.seq_len) * 100)
+        : 0;
+      const lr = data.last_result;
+
+      if (!data.face_detected) {
+        setRing(Math.min(bufPct, 20), "📡 Searching for your face…", "#00e5ff");
+        clearMsg(verifyMsg);
+        showMsg(verifyMsg, "Look directly at the camera.", "info");
+      } else if (lr && lr.granted && lr.username && lr.username.toLowerCase() === loggedInUsername.toLowerCase()) {
+        // ACCESS GRANTED
+        _autoGranted = true;
+        setRing(100, "✅ Identity Confirmed!", "#00e676");
+        clearMsg(verifyMsg);
+        showMsg(verifyMsg, "✅ Face matched! Redirecting…", "success");
+        setTimeout(() => showSuccess(loggedInUsername, lr), 1400);
+      } else if (data.face_detected && !(lr && lr.granted)) {
+        const displayPct = Math.max(bufPct, 30);
+        if (lr && lr.liveness_score !== undefined && lr.liveness_score < 0.4) {
+          setRing(displayPct, "⚠️ Liveness check…", "#ffab40");
+          showMsg(verifyMsg, "Hold still and look at the camera.", "warn");
+        } else {
+          setRing(displayPct, "🔍 Checking identity…", "#7c4dff");
+          clearMsg(verifyMsg);
+          showMsg(verifyMsg, "Face detected — matching identity…", "info");
+        }
+      } else {
+        setRing(bufPct, "🔍 Analysing…", "#00e5ff");
+      }
+    }
+  }
+
+  // Live-stream verify button is removed since the WebSocket handles it automatically.
+  // We can just disable the button or use it to restart the stream if needed.
   btnVerifyStr.addEventListener("click", async () => {
     clearMsg(verifyMsg);
-    setLoading(btnVerifyStr, true);
-    try {
-      const fd = new FormData();
-      fd.append("email", loggedInEmail);
-      const res  = await fetch("/api/portal/login/face-stream", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Face verification failed.");
-      setRing(100, "✅ Verified!");
-      showMsg(verifyMsg, `✅ Face matched! Logging in…`, "success");
-      setTimeout(() => showSuccess(loggedInUsername), 1200);
-    } catch (err) {
-      showMsg(verifyMsg, `❌ ${err.message}`, "error");
-      setRing(0, "Retry…");
-    } finally {
-      setLoading(btnVerifyStr, false);
-    }
+    _autoGranted = false;
+    startCameraAndWS(verifyFeed);
   });
 
   // Snapshot verify button
@@ -503,59 +639,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   btnRefAudit.addEventListener("click", fetchAuditLog);
-
-  // ══════════════════════════════════════════════════════════════════
-  // STATUS POLLING (header pill + admin decision panel)
-  // ══════════════════════════════════════════════════════════════════
-  async function pollStatus() {
-    try {
-      const res  = await fetch("/api/status");
-      const data = await res.json();
-
-      // Header
-      fpsChip.textContent = `${data.fps} FPS`;
-      statusDot.className = "status-dot " + (data.running ? "on" : "off");
-      statusText.textContent = data.running
-        ? (data.face_detected ? "Face Detected" : "Pipeline Active")
-        : "Pipeline Offline";
-
-      // Admin decision panel (only update if admin tab is active)
-      if (!tabAdmin.classList.contains("hidden") && data.last_result) {
-        const r = data.last_result;
-        feedHud.textContent = r.granted
-          ? `✅ GRANTED — ${r.username}`
-          : `❌ DENIED — ${r.reason || ""}`;
-        feedHud.style.color = r.granted ? "var(--green)" : "var(--red)";
-
-        dIcon.textContent  = r.granted ? "✅" : "❌";
-        dLabel.textContent = r.decision;
-        dLabel.style.color = r.granted ? "var(--green)" : "var(--red)";
-        dUser.textContent  = r.username;
-
-        const lv = Math.min(100, r.liveness_score * 100);
-        const iv = Math.min(100, r.identity_score * 100);
-        const cv = Math.min(100, r.combined_score * 100);
-        barLive.style.width = `${lv}%`;
-        barIden.style.width = `${iv}%`;
-        barComb.style.width = `${cv}%`;
-        valLive.textContent = `${lv.toFixed(0)}%`;
-        valIden.textContent = `${iv.toFixed(0)}%`;
-        valComb.textContent = `${cv.toFixed(0)}%`;
-        reasonText.textContent = r.reason || "";
-      } else if (!tabAdmin.classList.contains("hidden") && !data.last_result) {
-        feedHud.textContent = data.face_detected ? "Scanning…" : "NO TARGET DETECTED";
-        feedHud.style.color = "";
-      }
-
-    } catch (_) {
-      statusDot.className = "status-dot off";
-      statusText.textContent = "Connection Error";
-    }
-  }
-
-  // Start polling immediately
-  pollStatus();
-  statusInterval = setInterval(pollStatus, 1500);
 
   // ══════════════════════════════════════════════════════════════════
   // HELPERS
