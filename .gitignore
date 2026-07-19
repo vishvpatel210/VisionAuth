@@ -3,3 +3,11 @@ __pycache__/
 *.db
 .env
 venv/
+.venv/
+env/
+
+# Machine Learning Models & Weights
+*.onnx
+*.pt
+*.pth
+.insightface/
